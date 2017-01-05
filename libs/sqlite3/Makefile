@@ -76,7 +76,8 @@ TARGET_CFLAGS += $(FPIC) \
 CONFIGURE_ARGS += \
 	--enable-shared \
 	--enable-static \
-	--disable-editline
+	--disable-editline \
+	--disable-threadsafe
 
 CONFIGURE_VARS += \
 	config_BUILD_CC="$(HOSTCC)" \
