@@ -127,7 +127,7 @@ stop()
 	config_foreach mwan3_track_clean interface
 
 	for IP in "$IP4" "$IP6"; do
-
+		test -n "$IP" || continue
 		for route in $($IP route list table all | sed 's/.*table \([^ ]*\) .*/\1/' |  awk '{print $1}' | awk '{for(i=1;i<=NF;i++) if($i+0>0) if($i+0<255) {print;break}}'); do
 			$IP route flush table $route &> /dev/null
 		done
@@ -138,7 +138,7 @@ stop()
 	done
 
 	for IPT in "$IPT4" "$IPT6"; do
-
+		test -n "$IPT" || continue
 		$IPT -D PREROUTING -j mwan3_hook &> /dev/null
 		$IPT -D OUTPUT -j mwan3_hook &> /dev/null
 
