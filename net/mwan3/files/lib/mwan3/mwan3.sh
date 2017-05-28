@@ -16,6 +16,11 @@ mwan3_unlock() {
 	lock -u /var/run/mwan3.lock
 }
 
+test -x /usr/sbin/ip6tables || {
+	IPT6=""
+	IP6=""
+}
+
 mwan3_get_iface_id()
 {
 	local _tmp _iface _iface_count
@@ -35,6 +40,8 @@ mwan3_set_connected_iptables()
 {
 	local connected_network_v4 connected_network_v6
 
+	$IPS -! create mwan3_connected list:set
+
 	$IPS -! create mwan3_connected_v4 hash:net
 	$IPS create mwan3_connected_v4_temp hash:net
 
@@ -51,6 +58,10 @@ mwan3_set_connected_iptables()
 	$IPS swap mwan3_connected_v4_temp mwan3_connected_v4
 	$IPS destroy mwan3_connected_v4_temp
 
+	$IPS -! add mwan3_connected mwan3_connected_v4
+
+	test -n "$IP6" || return 0
+
 	$IPS -! create mwan3_connected_v6 hash:net family inet6
 	$IPS create mwan3_connected_v6_temp hash:net family inet6
 
@@ -61,8 +72,6 @@ mwan3_set_connected_iptables()
 	$IPS swap mwan3_connected_v6_temp mwan3_connected_v6
 	$IPS destroy mwan3_connected_v6_temp
 
-	$IPS -! create mwan3_connected list:set
-	$IPS -! add mwan3_connected mwan3_connected_v4
 	$IPS -! add mwan3_connected mwan3_connected_v6
 }
 
@@ -72,6 +81,7 @@ mwan3_set_general_rules()
 
 	for IP in "$IP4" "$IP6"; do
 
+		test -n "$IP6" || continue
 		if [ -z "$($IP rule list | awk '$1 == "2253:"')" ]; then
 			$IP rule add pref 2253 fwmark 0xfd00/0xff00 blackhole
 		fi
@@ -87,7 +97,7 @@ mwan3_set_general_iptables()
 	local IPT
 
 	for IPT in "$IPT4" "$IPT6"; do
-
+		test -n "$IPT" || continue
 		if ! $IPT -S mwan3_ifaces_in &> /dev/null; then
 			$IPT -N mwan3_ifaces_in
 		fi
@@ -177,7 +187,7 @@ mwan3_create_iface_iptables()
 		$IPT4 -A mwan3_ifaces_out -m mark --mark 0x0/0xff00 -j mwan3_iface_out_$1
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IPT6"; then
 
 		ubus call network.interface.${1}_6 status &>/dev/null
 		if [ "$?" -eq "0" ]; then
@@ -234,7 +244,7 @@ mwan3_delete_iface_iptables()
 		$IPT4 -X mwan3_iface_out_$1 &> /dev/null
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IPT6"; then
 
 		$IPT6 -D mwan3_ifaces_in -m mark --mark 0x0/0xff00 -j mwan3_iface_in_$1 &> /dev/null
 		$IPT6 -F mwan3_iface_in_$1 &> /dev/null
@@ -269,7 +279,7 @@ mwan3_create_iface_route()
 		$IP4 route add table $id default $route_args
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IP6"; then
 
 		ubus call network.interface.${1}_6 status &>/dev/null
 		if [ "$?" -eq "0" ]; then
@@ -298,7 +308,7 @@ mwan3_delete_iface_route()
 		$IP4 route flush table $id
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IP6"; then
 		$IP6 route flush table $id
 	fi
 }
@@ -326,7 +336,7 @@ mwan3_create_iface_rules()
 		$IP4 rule add pref $(($id+2000)) fwmark $(($id*256))/0xff00 lookup $id
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IP6"; then
 
 		while [ -n "$($IP6 rule list | awk '$1 == "'$(($id+1000)):'"')" ]; do
 			$IP6 rule del pref $(($id+1000))
@@ -361,7 +371,7 @@ mwan3_delete_iface_rules()
 		done
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IP6"; then
 
 		while [ -n "$($IP6 rule list | awk '$1 == "'$(($id+1000)):'"')" ]; do
 			$IP6 rule del pref $(($id+1000))
@@ -465,7 +475,7 @@ mwan3_set_policy()
 		fi
 	fi
 
-	if [ "$family" == "ipv6" ]; then
+	if [ "$family" == "ipv6" ] && test -n "$IPT6"; then
 
 		if [ -n "$($IP6 route list table $id)" ]; then
 			if [ "$metric" -lt "$lowest_metric_v6" ]; then
@@ -512,7 +522,7 @@ mwan3_create_policies_iptables()
 	fi
 
 	for IPT in "$IPT4" "$IPT6"; do
-
+		test -n "$IPT" || continue
 		if ! $IPT -S mwan3_policy_$1 &> /dev/null; then
 			$IPT -N mwan3_policy_$1
 		fi
@@ -559,6 +569,7 @@ mwan3_set_sticky_iptables()
 			[ -n "$id" ] || return 0
 
 			for IPT in "$IPT4" "$IPT6"; do
+				test -n "$IPT" || continue
 				if [ -n "$($IPT -S mwan3_iface_in_$1 2> /dev/null)" -a -n "$($IPT -S mwan3_iface_out_$1 2> /dev/null)" ]; then
 					$IPT -I mwan3_rule_$rule -m mark --mark $(($id*256))/0xff00 -m set ! --match-set mwan3_sticky_$rule src,src -j MARK --set-xmark 0x0/0xff00
 					$IPT -I mwan3_rule_$rule -m mark --mark 0/0xff00 -j MARK --set-xmark $(($id*256))/0xff00
@@ -606,6 +617,7 @@ mwan3_set_user_iptables_rule()
 				policy="mwan3_policy_$use_policy"
 
 				for IPT in "$IPT4" "$IPT6"; do
+					test -n "$IPT" || continue
 					if ! $IPT -S $policy &> /dev/null; then
 						$IPT -N $policy
 					fi
@@ -626,6 +638,7 @@ mwan3_set_user_iptables_rule()
 				config_foreach mwan3_set_sticky_iptables interface
 
 				for IPT in "$IPT4" "$IPT6"; do
+					test -n "$IPT" || continue
 					$IPT -A mwan3_rule_$1 -m mark --mark 0/0xff00 -j $policy
 					$IPT -A mwan3_rule_$1 -m mark ! --mark 0xfc00/0xfc00 -j SET --del-set mwan3_sticky_$rule src,src
 					$IPT -A mwan3_rule_$1 -m mark ! --mark 0xfc00/0xfc00 -j SET --add-set mwan3_sticky_$rule src,src
@@ -636,6 +649,7 @@ mwan3_set_user_iptables_rule()
 				policy="mwan3_policy_$use_policy"
 
 				for IPT in "$IPT4" "$IPT6"; do
+					test -n "$IPT" || continue
 					if ! $IPT -S $policy &> /dev/null; then
 						$IPT -N $policy
 					fi
@@ -647,6 +661,7 @@ mwan3_set_user_iptables_rule()
 		if [ "$family" == "any" ]; then
 
 			for IPT in "$IPT4" "$IPT6"; do
+				test -n "$IPT" || continue
 				case $proto in
 					tcp|udp)
 					$IPT -A mwan3_rules -p $proto -s $src_ip -d $dest_ip $ipset -m multiport --sports $src_port -m multiport --dports $dest_port -m mark --mark 0/0xff00 -m comment --comment "$1" -j $policy &> /dev/null
@@ -668,7 +683,7 @@ mwan3_set_user_iptables_rule()
 				;;
 			esac
 
-		elif [ "$family" == "ipv6" ]; then
+		elif [ "$family" == "ipv6" ] && test -n "$IPT6"; then
 
 			case $proto in
 				tcp|udp)
@@ -687,7 +702,7 @@ mwan3_set_user_rules()
 	local IPT
 
 	for IPT in "$IPT4" "$IPT6"; do
-
+		test -n "$IPT" || continue
 		if ! $IPT -S mwan3_rules &> /dev/null; then
 			$IPT -N mwan3_rules
 		fi
@@ -713,6 +728,7 @@ mwan3_report_iface_status()
 	fi
 
 	if [ "$family" == "ipv6" ]; then
+		test -n "$IP6" || return 0
 		IP="$IP6"
 		IPT="$IPT6"
 	fi
@@ -779,6 +795,8 @@ mwan3_report_policies_v6()
 {
 	local percent policy share total_weight weight iface
 
+	test -n "$IPT6" || return 0
+
 	for policy in $($IPT6 -S | awk '{print $2}' | grep mwan3_policy_ | sort -u); do
 		echo "$policy:" | sed 's/mwan3_policy_//'
 
@@ -815,6 +833,8 @@ mwan3_report_connected_v6()
 {
 	local address
 
+	test -n "$IPT6" || return 0
+
 	if [ -n "$($IPT6 -S mwan3_connected 2> /dev/null)" ]; then
 		for address in $($IPS list mwan3_connected_v6 | egrep '([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])'); do
 			echo " $address"
@@ -831,6 +851,7 @@ mwan3_report_rules_v4()
 
 mwan3_report_rules_v6()
 {
+	test -n "$IPT6" || return 0
 	if [ -n "$($IPT6 -S mwan3_rules 2> /dev/null)" ]; then
 		$IPT6 -L mwan3_rules -n -v 2> /dev/null | tail -n+3 | sed 's/mark.*//' | sed 's/mwan3_policy_/- /' | sed 's/mwan3_rule_/S /'
 	fi
