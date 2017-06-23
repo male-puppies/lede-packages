@@ -189,7 +189,7 @@ config NGINX_NAXSI
 
 config NGINX_LUA
 	bool
-	prompt "Enable Lua module"
+	prompt "Enable LUA module with ngx_devel_kit"
 	default n
 
 config NGINX_HTTP_REAL_IP
