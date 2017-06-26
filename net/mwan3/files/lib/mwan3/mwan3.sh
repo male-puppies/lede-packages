@@ -81,7 +81,7 @@ mwan3_set_general_rules()
 
 	for IP in "$IP4" "$IP6"; do
 
-		test -n "$IP6" || continue
+		test -n "$IP" || continue
 		if [ -z "$($IP rule list | awk '$1 == "2253:"')" ]; then
 			$IP rule add pref 2253 fwmark 0xfd00/0xff00 blackhole
 		fi
