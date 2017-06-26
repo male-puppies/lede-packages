@@ -8,6 +8,14 @@ IPT6="ip6tables -t mangle -w"
 LOG="logger -t mwan3 -p"
 CONNTRACK_FILE="/proc/net/nf_conntrack"
 
+mwan3_lock() {
+	lock /var/run/mwan3.lock
+}
+
+mwan3_unlock() {
+	lock -u /var/run/mwan3.lock
+}
+
 test -x /usr/sbin/ip6tables || {
 	IPT6=""
 	IP6=""
@@ -73,7 +81,7 @@ mwan3_set_general_rules()
 
 	for IP in "$IP4" "$IP6"; do
 
-		test -n "$IP6" || continue
+		test -n "$IP" || continue
 		if [ -z "$($IP rule list | awk '$1 == "2253:"')" ]; then
 			$IP rule add pref 2253 fwmark 0xfd00/0xff00 blackhole
 		fi
@@ -746,7 +754,7 @@ mwan3_report_iface_status()
 	config_list_foreach $1 track_ip mwan3_list_track_ips
 
 	if [ -n "$track_ips" ]; then
-		if [ -n "$(/bin/ps -w | grep mwan3track | grep -v grep | sed '/.*\/usr\/sbin\/mwan3track \([^ ]*\) .*$/!d;s//\1/' | awk '$1 == "'$1'"')" ]; then
+		if [ -n "$(pgrep -f "mwan3track $1")" ]; then
 			tracking="active"
 		else
 			tracking="down"
