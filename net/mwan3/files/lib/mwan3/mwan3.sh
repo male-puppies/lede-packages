@@ -545,6 +545,7 @@ mwan3_set_policy()
 				$IPT4 -I mwan3_policy_$policy -m mark --mark 0x0/$MMX_MASK $probability -m comment --comment "$iface $weight $total_weight_v4" -j MARK --set-xmark $(mwan3_id2mask id MMX_MASK)/$MMX_MASK
 			fi
 		fi
+		fi
 	fi
 
 	if [ "$family" == "ipv6" ] && test -n "$IPT6"; then
