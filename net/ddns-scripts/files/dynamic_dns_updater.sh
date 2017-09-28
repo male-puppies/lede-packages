@@ -102,11 +102,14 @@ UPDFILE="$ddns_rundir/$SECTION_ID.update"	# last update successful send (system 
 DATFILE="$ddns_rundir/$SECTION_ID.dat"	# save stdout data of WGet and other extern programs called
 ERRFILE="$ddns_rundir/$SECTION_ID.err"	# save stderr output of WGet and other extern programs called
 LOGFILE="$ddns_logdir/$SECTION_ID.log"	# log file
-
+STATEFILE="$ddns_rundir/$SECTION_ID.state"
+CONNECTFILE="$ddns_rundir/$SECTION_ID.connect"
 # VERBOSE > 1 delete logfile if exist to create an empty one
 # only with this data of this run for easier diagnostic
 # new one created by write_log function
 [ $VERBOSE -gt 1 -a -f $LOGFILE ] && rm -f $LOGFILE
+[ -f $STATEFILE ] && rm -f $STATEFILE
+[ -f $CONNECTFILE ] && rm -f $CONNECTFILE
 
 # TRAP handler
 trap "trap_handler 0 \$?" 0	# handle script exit with exit status
@@ -271,7 +274,7 @@ fi
 get_seconds CHECK_SECONDS ${check_interval:-10} ${check_unit:-"minutes"} # default 10 min
 get_seconds FORCE_SECONDS ${force_interval:-72} ${force_unit:-"hours"}	 # default 3 days
 get_seconds RETRY_SECONDS ${retry_interval:-60} ${retry_unit:-"seconds"} # default 60 sec
-[ $CHECK_SECONDS -lt 300 ] && CHECK_SECONDS=300		# minimum 5 minutes
+#[ $CHECK_SECONDS -lt 300 ] && CHECK_SECONDS=300		# minimum 5 minutes
 [ $FORCE_SECONDS -gt 0 -a $FORCE_SECONDS -lt $CHECK_SECONDS ] && FORCE_SECONDS=$CHECK_SECONDS	# FORCE_SECONDS >= CHECK_SECONDS or 0
 write_log 7 "check interval: $CHECK_SECONDS seconds"
 write_log 7 "force interval: $FORCE_SECONDS seconds"
@@ -328,6 +331,10 @@ ERR_LAST=$?
 
 # loop endlessly, checking ip every check_interval and forcing an updating once every force_interval
 write_log 6 "Starting main loop at $(eval $DATE_PROG)"
+get_local_ip LOCAL_IP
+send_update "$LOCAL_IP"
+echo $LOCAL_IP > /tmp/ddns_local_ip
+echo "FIRST" > $CONNECTFILE
 while : ; do
 
 	get_local_ip LOCAL_IP		# read local IP
@@ -347,6 +354,7 @@ while : ; do
 			write_log 7 "Verbose Mode: $VERBOSE - NO UPDATE send"
 		elif [ "$LOCAL_IP" != "$REGISTERED_IP" ]; then
 			write_log 7 "Update needed - L: '$LOCAL_IP' <> R: '$REGISTERED_IP'"
+			echo "UPDATING" > $CONNECTFILE
 		else
 			write_log 7 "Forced Update - L: '$LOCAL_IP' == R: '$REGISTERED_IP'"
 		fi
@@ -354,6 +362,7 @@ while : ; do
 		ERR_LAST=0
 		[ $VERBOSE -lt 3 ] && {
 			# only send if VERBOSE < 3
+			echo "UPDATING" > $CONNECTFILE
 			send_update "$LOCAL_IP"
 			ERR_LAST=$?	# save return value
 		}
@@ -370,9 +379,13 @@ while : ; do
 			[ "$LOCAL_IP" != "$REGISTERED_IP" ] \
 				&& write_log 6 "Update successful - IP '$LOCAL_IP' send" \
 				|| write_log 6 "Forced update successful - IP: '$LOCAL_IP' send"
+				echo $LOCAL_IP > /tmp/ddns_local_ip
+				echo "SUCCESSED" > $CONNECTFILE
 		elif [ $ERR_LAST -eq 127 ]; then
+			echo "FAILED" > $CONNECTFILE
 			write_log 3 "No update send to DDNS Provider"
 		else
+			echo "FAILED" > $CONNECTFILE
 			write_log 3 "IP update not accepted by DDNS Provider"
 		fi
 	fi

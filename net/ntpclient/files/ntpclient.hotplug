@@ -28,7 +28,7 @@ check_server() {
 	}
 
 	[ -z "$hostname" ] && return
-	$NTPC -c 1 -p ${port:-123} -i 2 -h $hostname > /dev/null && { SERVER=$hostname; PORT=${port:-123}; }
+	$NTPC -c 1 -p ${port:-125} -i 2 -h $hostname > /dev/null && { SERVER=$hostname; PORT=${port:-125}; }
 }
 
 set_drift() {
@@ -66,13 +66,13 @@ load_settings() {
 config_load ntpclient
 config_foreach load_settings ntpclient
 
-NTP_RUNNING=`ps  | grep $NTPC | grep -v grep`
+NTP_RUNNING=`ps -aux | grep $NTPC | grep -v grep`
 
 case "${ACTION:-ifup}" in
 	ifup)
 		[ -z "$NTP_RUNNING" ] && start_ntpclient 
 	;;
 	ifdown)
-		[ -n "$NTP_RUNNING" ] && stop_ntpclient 
+		[ -n "$NTP_RUNNING" ] && stop_ntpclient && start_ntpclient
 	;;
 esac

@@ -60,6 +60,7 @@ SECTION_ID="lucihelper"
 LOGFILE="$ddns_logdir/$SECTION_ID.log"
 DATFILE="$ddns_rundir/$SECTION_ID.$$.dat"	# save stdout data of WGet and other extern programs called
 ERRFILE="$ddns_rundir/$SECTION_ID.$$.err"	# save stderr output of WGet and other extern programs called
+STATEFILE="$ddns_rundir/$SECTION_ID.state"
 DDNSPRG="/usr/lib/ddns/dynamic_dns_updater.sh"
 VERBOSE=0		# no console logging
 # global variables normally set by reading DDNS UCI configuration

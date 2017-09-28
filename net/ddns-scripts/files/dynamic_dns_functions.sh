@@ -31,6 +31,7 @@ PIDFILE=""		# pid file
 UPDFILE=""		# store UPTIME of last update
 DATFILE=""		# save stdout data of WGet and other external programs called
 ERRFILE=""		# save stderr output of WGet and other external programs called
+STATEFILE=""
 TLDFILE=/usr/share/public_suffix_list.dat.gz	# TLD file used by split_FQDN
 
 CHECK_SECONDS=0		# calculated seconds out of given
@@ -841,6 +842,13 @@ do_transfer() {
 	write_log 12 "Error in 'do_transfer()' - program coding error"
 }
 
+get_uptime() {
+	# $1	Variable to store result in
+	[ $# -ne 1 ] && write_log 12 "Error calling 'verify_host_port()' - wrong number of parameters"
+	local __UPTIME=$(cat /proc/uptime)
+	eval "$1=\"${__UPTIME%%.*}\""
+}
+
 send_update() {
 	# $1	# IP to set at DDNS service provider
 	local __IP
@@ -876,6 +884,7 @@ send_update() {
 
 		write_log 7 "DDNS Provider answered:\n$(cat $DATFILE)"
 
+		echo $(cat $DATFILE) > $STATEFILE
 		[ -z "$UPD_ANSWER" ] && return 0	# not set then ignore
 
 		grep -i -E "$UPD_ANSWER" $DATFILE >/dev/null 2>&1
@@ -1122,6 +1131,7 @@ get_registered_ip() {
 		eval $__RUNPROG
 		__ERR=$?
 		if [ $__ERR -ne 0 ]; then
+			echo $__ERR > $STATEFILE
 			write_log 3 "$__PROG error: '$__ERR'"
 			write_log 7 "$(cat $ERRFILE)"
 		else
@@ -1168,13 +1178,6 @@ get_registered_ip() {
 	done
 	# we should never come here there must be a programming error
 	write_log 12 "Error in 'get_registered_ip()' - program coding error"
-}
-
-get_uptime() {
-	# $1	Variable to store result in
-	[ $# -ne 1 ] && write_log 12 "Error calling 'verify_host_port()' - wrong number of parameters"
-	local __UPTIME=$(cat /proc/uptime)
-	eval "$1=\"${__UPTIME%%.*}\""
 }
 
 trap_handler() {
