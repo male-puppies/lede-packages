@@ -1,9 +1,9 @@
 #!/bin/sh
 
-[ -x /usr/bin/ip ] || exit 4
+[ -x /usr/bin/ip ] || [ -x /usr/sbin/ip ] || exit 4
 [ -x /usr/sbin/ipset ] || exit 5
 [ -x /usr/sbin/iptables ] || exit 6
-[ -x /usr/sbin/ip6tables ] || exit 7
+#[ -x /usr/sbin/ip6tables ] || exit 7
 [ -x /usr/bin/logger ] || exit 8
 
 . /lib/functions.sh
@@ -42,10 +42,8 @@ ifdown()
 
 	ACTION=ifdown INTERFACE=$1 /sbin/hotplug-call iface
 
-	if [ -e /var/run/mwan3track-$1.pid ] ; then
-		kill $(cat /var/run/mwan3track-$1.pid)
-		rm /var/run/mwan3track-$1.pid
-	fi
+	kill $(pgrep -f "mwan3track $1 $2") &> /dev/null
+	mwan3_track_clean $1
 }
 
 ifup()
@@ -129,10 +127,12 @@ stop()
 	local ipset route rule table IP IPT
 
 	killall mwan3track &> /dev/null
-	rm /var/run/mwan3track-* &> /dev/null
+
+	config_load mwan3
+	config_foreach mwan3_track_clean interface
 
 	for IP in "$IP4" "$IP6"; do
-
+		test -n "$IP" || continue
 		for route in $($IP route list table all | sed 's/.*table \([^ ]*\) .*/\1/' |  awk '{print $1}' | awk '{for(i=1;i<=NF;i++) if($i+0>0) if($i+0<255) {print;break}}'); do
 			$IP route flush table $route &> /dev/null
 		done
@@ -143,7 +143,7 @@ stop()
 	done
 
 	for IPT in "$IPT4" "$IPT6"; do
-
+		test -n "$IPT" || continue
 		$IPT -D PREROUTING -j mwan3_hook &> /dev/null
 		$IPT -D OUTPUT -j mwan3_hook &> /dev/null
 
@@ -165,7 +165,7 @@ stop()
 	done
 
 	mwan3_lock_clean
-	rm -rf $MWAN3_STATUS_DIR
+	rm -rf $MWAN3_STATUS_DIR $MWAN3TRACK_STATUS_DIR
 }
 
 restart() {

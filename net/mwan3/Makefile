@@ -8,7 +8,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mwan3
-PKG_VERSION:=2.0.2
+PKG_VERSION:=2.6.6
 PKG_RELEASE:=1
 PKG_MAINTAINER:=Florian Eckert <fe@dev.tdt.de>
 PKG_LICENSE:=GPLv2
@@ -21,6 +21,7 @@ define Package/mwan3
    SUBMENU:=Routing and Redirection
    DEPENDS:=+ip +ipset +iptables +iptables-mod-conntrack-extra +iptables-mod-ipopt
    TITLE:=Multiwan hotplug script with connection tracking support
+   MAINTAINER:=Florian Eckert <fe@dev.tdt.de>
    PKGARCH:=all
 endef
 
@@ -32,9 +33,26 @@ endef
 
 define Package/mwan3/conffiles
 /etc/config/mwan3
+/etc/mwan3.user
 endef
 
 define Build/Compile
+endef
+
+define Package/mwan3/postinst
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	/etc/init.d/rpcd restart
+fi
+exit 0
+endef
+
+define Package/mwan3/postrm
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	/etc/init.d/rpcd restart
+fi
+exit 0
 endef
 
 define Package/mwan3/install
