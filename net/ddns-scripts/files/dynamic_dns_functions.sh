@@ -32,6 +32,7 @@ UPDFILE=""		# store UPTIME of last update
 DATFILE=""		# save stdout data of WGet and other external programs called
 ERRFILE=""		# save stderr output of WGet and other external programs called
 STATEFILE=""
+CONNECTFILE=""
 TLDFILE=/usr/share/public_suffix_list.dat.gz	# TLD file used by split_FQDN
 
 CHECK_SECONDS=0		# calculated seconds out of given
@@ -818,7 +819,7 @@ do_transfer() {
 		[ $__ERR -eq 0 ] && return 0	# no error leave
 		[ -n "$LUCI_HELPER" ] && return 1	# no retry if called by LuCI helper script
 
-		write_log 3 "$__PROG Error: '$__ERR'"
+		write_log 3 "$__PROG Error: '$__ERR'" && rm -f $CONNECTFILE
 		write_log 7 "$(cat $ERRFILE)"		# report error
 
 		[ $VERBOSE -gt 1 ] && {
