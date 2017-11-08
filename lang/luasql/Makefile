@@ -42,7 +42,7 @@ endef
 define Package/luasql-mysql
 $(call Package/luasql/Default)
   TITLE+= for MySQL
-  DEPENDS+= +libmysqlclient
+  DEPENDS+= +libmariadb
   VARIANT:=mysql
 endef
 
