@@ -492,8 +492,7 @@ define Package/php7-fpm/install
 endef
 
 define Package/php7-fpm/postinst
-	sed -i "s/;env[PATH] =.*/env[PATH] =$${PATH}/" /etc/php7-fpm.d/www.conf
-	exit 0
+	sed -i "s#;env\[PATH\] =.*#env\[PATH\] = $${PATH}#" /etc/php7-fpm.d/www.conf
 endef
 
 define Build/Prepare
