@@ -491,6 +491,11 @@ define Package/php7-fpm/install
 	$(INSTALL_BIN) ./files/php7-fpm.init $(1)/etc/init.d/php7-fpm
 endef
 
+define Package/php7-fpm/postinst
+	sed -i "s/;env[PATH] =.*/env[PATH] =$${PATH}/" /etc/php7-fpm.d/www.conf
+	exit 0
+endef
+
 define Build/Prepare
 	$(call Build/Prepare/Default)
 	( cd $(PKG_BUILD_DIR); touch configure.in; ./buildconf --force )
