@@ -538,7 +538,7 @@ define BuildModule
       else
 	echo "extension=$(subst -,_,$(1)).so" > $$(1)/etc/php7/$(if $(4),$(4),20)_$(subst -,_,$(1)).ini
     endif
-      ifeq ($(1),mysql)
+      ifeq ($(1),pdo-mysql)
 	echo "[mysql]" >> $$(1)/etc/php7/$(if $(4),$(4),20)_$(subst -,_,$(1)).ini
 	echo "mysql.default_socket=/tmp/mysql.sock" >> $$(1)/etc/php7/$(if $(4),$(4),20)_$(subst -,_,$(1)).ini
       endif
