@@ -26,7 +26,7 @@ include $(INCLUDE_DIR)/package.mk
 
 define Package/clamav/Default
   SECTION:=net
-  DEPENDS:=+libpthread +uclibcxx +zlib +libcurl +libopenssl
+  DEPENDS:=+libpthread +uclibcxx +zlib +libcurl +libopenssl +libltdl
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
   TITLE:=ClamAV
@@ -67,7 +67,6 @@ define Build/Configure
 		--exec-prefix=/usr/ \
 		--disable-xml \
 		--disable-bzip2 \
-		--enable-ltdl-install \
 		--with-user nobody \
 		--with-group nogroup \
 	)
