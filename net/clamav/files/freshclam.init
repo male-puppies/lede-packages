@@ -15,16 +15,27 @@ validate_freshclam_section() {
 		'DatabaseMirror:string' \
 		'NotifyClamd:string' \
 		'DatabaseOwner:string' \
-		'CompressLocalDatabase:string:'
+		'CompressLocalDatabase:string' \
+		'MemThreshold:uinteger'
 }
 
 start_service() {
-	local freshclam_config_file UpdateLogFile DatabaseOwner NotifyClamd DatabaseMirror
+	local freshclam_config_file UpdateLogFile DatabaseOwner NotifyClamd DatabaseMirror MemThreshold
 
 	validate_freshclam_section freshclam || {
 		echo "validation failed"
 		return 1
 	}
+
+	if [ -z $MemThreshold ];then
+		MemThreshold=1048576 #1G
+	fi
+
+	memtotal=`grep MemTotal /proc/meminfo | awk '{print $2}'`
+	if [ $memtotal -lt $MemThreshold ];then
+		echo "lowmem: total=$memtotal < threshold=$MemThreshold can't launch $PROG"
+		return 1
+	fi
 
 	[ -f /tmp/freshclam.pid ] && echo "already running" && return 0
 
