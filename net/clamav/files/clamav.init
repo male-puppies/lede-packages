@@ -42,7 +42,8 @@ validate_clamav_section() {
 		'MaxFileSize:string' \
 		'LocalSocket:string' \
 		'User:string' \
-		'ExitOnOOM:string'
+		'ExitOnOOM:string' \
+		'MemThreshold:uinteger'
 }
 
 start_service() {
@@ -50,12 +51,22 @@ start_service() {
 		StreamMaxPort MaxThreads ReadTimeout CommandReadTimeout MaxDirectoryRecursion \
 		FollowFileSymlinks FollowDirectorySymlinks SelfCheck DetectPUA ScanPE DisableCertCheck \
 		ScanELF DetectBrokenExecutables ScanOLE2 ScanPDF ScanSWF ScanMail ScanPartialMessages \
-		ScanArchive TemporaryDirectory ArchiveBlockEncrypted MaxFileSize LocalSocket User
+		ScanArchive TemporaryDirectory ArchiveBlockEncrypted MaxFileSize LocalSocket User ExitOnOOM MemThreshold
 
 	validate_clamav_section clamav || {
 		echo "validation failed"
 		return 1
 	}
+
+	if [ -z $MemThreshold ];then
+		MemThreshold=1048576 #1G
+	fi
+
+	memtotal=`grep MemTotal /proc/meminfo | awk '{print $2}'`
+	if [ $memtotal -lt $MemThreshold ];then
+		echo "lowmem: total=$memtotal < threshold=$MemThreshold can't launch $PROG"
+		return 1
+	fi
 
 	mkdir -p /usr/share/clamav
 	mkdir -p /etc/clamav/
