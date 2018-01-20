@@ -25,4 +25,5 @@ start() {
 
 stop() {
 	service_stop $PROG
+	kill -QUIT `cat ${SERVICE_PID_FILE}`
 }
