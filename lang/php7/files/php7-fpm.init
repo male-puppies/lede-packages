@@ -19,6 +19,7 @@ start_instance() {
 }
 
 start() {
+	wait_for_mnt_ready
 	config_load 'php7-fpm'
 	config_foreach start_instance 'php7-fpm'
 }
