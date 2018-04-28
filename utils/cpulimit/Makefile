@@ -36,8 +36,8 @@ define Package/cpulimit/conffiles
 endef
 
 define Build/Prepare
-        mkdir -p $(PKG_BUILD_DIR)
-        $(CP) ./src/* $(PKG_BUILD_DIR)/
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
 endef
 
 define Package/cpulimit/install
@@ -46,3 +46,4 @@ define Package/cpulimit/install
 endef
 
 $(eval $(call BuildPackage,cpulimit))
+

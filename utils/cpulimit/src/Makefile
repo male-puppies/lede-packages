@@ -1,10 +1,9 @@
 CFLAGS?=-Wall -g -D_GNU_SOURCE
-TARGETS=cpulimit
 LIBS=list.o process_iterator.o process_group.o
 
-all::	$(TARGETS) $(LIBS)
+all: cpulimit 
 
-cpulimit:	cpulimit.c $(LIBS)
+cpulimit: cpulimit.c $(LIBS)
 	$(CC) -o cpulimit cpulimit.c $(LIBS) $(CFLAGS)
 
 process_iterator.o: process_iterator.c process_iterator.h
@@ -16,6 +15,8 @@ list.o: list.c list.h
 process_group.o: process_group.c process_group.h process_iterator.o list.o
 	$(CC) -c process_group.c $(CFLAGS)
 
+.PHONY:
+	clean all
 clean:
 	rm -f *~ *.o $(TARGETS)
 
